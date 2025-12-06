@@ -29,11 +29,11 @@ def detect_columns(df):
             break  # Take the FIRST date column
     mapping['date'] = date_col
     
-    # Detect DESCRIPTION column (any containing "description", "desc", "transaction", "particulars")
+    # Detect DESCRIPTION column (any containing "description", "desc")
     desc_col = None
     for col in df.columns:
         col_lower = col.lower()
-        if any(keyword in col_lower for keyword in ['description', 'desc', 'particular', 'transaction', 'detail']):
+        if any(keyword in col_lower for keyword in ['description', 'desc']):
             desc_col = col
             break
     mapping['description'] = desc_col
