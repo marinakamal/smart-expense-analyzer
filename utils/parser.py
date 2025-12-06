@@ -197,8 +197,28 @@ def parse_maybank_pdf(file):
                     # First row is usually headers
                     headers = [str(h).strip() if h else f"col_{i}" for i, h in enumerate(table[0])]
                     
-                    # Create temporary dataframe for this table
-                    temp_df = pd.DataFrame(table[1:], columns=headers)
+                    # SPECIAL HANDLING: Check if data is in one row with newline separators
+                    # (Common in Maybank credit card statements)
+                    if len(table) == 2 and '\n' in str(table[1][0]):
+                        # Split the single row by newlines
+                        data_row = table[1]
+                        split_data = []
+                        
+                        # Split each column by newlines
+                        max_rows = max(len(str(col).split('\n')) for col in data_row)
+                        
+                        for i in range(max_rows):
+                            row_data = []
+                            for col in data_row:
+                                col_values = str(col).split('\n')
+                                row_data.append(col_values[i] if i < len(col_values) else "")
+                            split_data.append(row_data)
+                        
+                        # Create dataframe from split data
+                        temp_df = pd.DataFrame(split_data, columns=headers)
+                    else:
+                        # Normal multi-row table
+                        temp_df = pd.DataFrame(table[1:], columns=headers)
                     
                     # Detect columns in this table
                     col_mapping = detect_columns(temp_df)
