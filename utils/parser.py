@@ -1,6 +1,6 @@
 """
 parser.py - Bank Statement Parsing Utilities
-Handles CSV and PDF parsing for Maybank statements
+Handles CSV and PDF parsing for Maybank statements with flexible column detection
 """
 
 import pandas as pd
@@ -8,86 +8,173 @@ import pdfplumber
 import streamlit as st
 from io import StringIO
 
+def detect_columns(df):
+    """
+    Intelligently detect which columns represent date, description, and amount
+    
+    Args:
+        df: DataFrame with original column names
+        
+    Returns:
+        dict: Mapping of standard names to actual column names
+    """
+    columns_lower = [col.lower() for col in df.columns]
+    mapping = {}
+    
+    # Detect DATE column (first one containing "date")
+    date_col = None
+    for col in df.columns:
+        if 'date' in col.lower():
+            date_col = col
+            break  # Take the FIRST date column
+    mapping['date'] = date_col
+    
+    # Detect DESCRIPTION column (any containing "description", "desc", "transaction", "particulars")
+    desc_col = None
+    for col in df.columns:
+        col_lower = col.lower()
+        if any(keyword in col_lower for keyword in ['description', 'desc', 'particular', 'transaction', 'detail']):
+            desc_col = col
+            break
+    mapping['description'] = desc_col
+    
+    # Detect AMOUNT column (containing "amount", "debit", "credit", "value")
+    amount_col = None
+    for col in df.columns:
+        col_lower = col.lower()
+        if any(keyword in col_lower for keyword in ['amount', 'debit', 'credit', 'value', 'sum']):
+            amount_col = col
+            break
+    mapping['amount'] = amount_col
+    
+    # Detect BALANCE column (optional - containing "balance")
+    balance_col = None
+    for col in df.columns:
+        if 'balance' in col.lower():
+            balance_col = col
+            break
+    mapping['balance'] = balance_col
+    
+    return mapping
+
+
 def parse_maybank_csv(file):
     """
-    Parse Maybank CSV bank statement
+    Parse bank statement CSV with flexible column detection
     
-    Expected format:
-    Entry Date | Value Date | Transaction Description | Transaction Amount | Statement Balance
+    Accepts any format as long as it has columns containing:
+    - "date" (any column with "date" in name)
+    - "description" or "transaction" (description of transaction)
+    - "amount" (transaction amount)
     
     Args:
         file: Uploaded file object from Streamlit
         
     Returns:
-        pandas DataFrame with columns: date, description, amount, balance, transaction_type
+        pandas DataFrame with columns: date, description, amount, transaction_type, amount_abs
     """
     try:
         # Read CSV file
         df = pd.read_csv(file)
         
-        # Standardize column names (remove spaces, lowercase)
-        df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+        # Detect columns intelligently
+        col_mapping = detect_columns(df)
         
-        # Expected columns (flexible matching)
-        # Maybank format: entry_date, value_date, transaction_description, transaction_amount, statement_balance
+        # Validate required columns were found
+        if not col_mapping['date']:
+            st.error("❌ Could not find a DATE column. Please ensure your CSV has a column with 'date' in the name.")
+            return None
         
-        # Rename columns to standard format
-        column_mapping = {
-            'entry_date': 'date',
-            'transaction_description': 'description',
-            'transaction_amount': 'amount',
-            'statement_balance': 'balance'
-        }
+        if not col_mapping['description']:
+            st.error("❌ Could not find a DESCRIPTION column. Please ensure your CSV has a column with 'description' or 'transaction' in the name.")
+            return None
         
-        # Apply renaming
-        for old_col, new_col in column_mapping.items():
-            if old_col in df.columns:
-                df.rename(columns={old_col: new_col}, inplace=True)
+        if not col_mapping['amount']:
+            st.error("❌ Could not find an AMOUNT column. Please ensure your CSV has a column with 'amount', 'debit', or 'credit' in the name.")
+            return None
         
-        # Keep only relevant columns
-        required_columns = ['date', 'description', 'amount', 'balance']
-        df = df[required_columns]
+        # Create new dataframe with standardized columns
+        df_clean = pd.DataFrame()
+        df_clean['date'] = df[col_mapping['date']]
+        df_clean['description'] = df[col_mapping['description']]
+        df_clean['amount'] = df[col_mapping['amount']]
         
-        # Clean amount column (remove commas, convert to float)
-        df['amount'] = df['amount'].astype(str).str.replace(',', '').str.replace('RM', '').str.strip()
-        df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+        # Add balance if available
+        if col_mapping['balance']:
+            df_clean['balance'] = df[col_mapping['balance']]
+        else:
+            df_clean['balance'] = None
+        
+        # Clean amount column (remove commas, RM, currency symbols)
+        # Handle CR suffix (credits) - make them positive
+        df_clean['amount'] = df_clean['amount'].astype(str).str.strip()
+        
+        # Check if amount has "CR" suffix (credit)
+        is_credit = df_clean['amount'].str.contains('CR', case=False, na=False)
+        
+        # Remove CR, commas, RM, and currency symbols
+        df_clean['amount'] = df_clean['amount'].str.replace('CR', '', case=False).str.replace(',', '').str.replace('RM', '').str.replace('$', '').str.strip()
+        df_clean['amount'] = pd.to_numeric(df_clean['amount'], errors='coerce')
+        
+        # For credit card statements: CR = payment (positive), non-CR = expense (negative)
+        # Reverse the sign for expenses if not already negative
+        df_clean.loc[~is_credit & (df_clean['amount'] > 0), 'amount'] = -df_clean.loc[~is_credit & (df_clean['amount'] > 0), 'amount']
+        df_clean.loc[is_credit & (df_clean['amount'] < 0), 'amount'] = df_clean.loc[is_credit & (df_clean['amount'] < 0), 'amount'].abs()
         
         # Determine transaction type (expense vs income)
-        df['transaction_type'] = df['amount'].apply(lambda x: 'expense' if x < 0 else 'income')
+        df_clean['transaction_type'] = df_clean['amount'].apply(lambda x: 'expense' if x < 0 else 'income')
         
         # Make all amounts positive for easier display
-        df['amount_abs'] = df['amount'].abs()
+        df_clean['amount_abs'] = df_clean['amount'].abs()
+        
+        # FILTER: Keep only expenses (remove payments/income)
+        df_clean = df_clean[df_clean['transaction_type'] == 'expense'].copy()
+        
+        # Check if any expenses remain
+        if df_clean.empty:
+            st.warning("⚠️ No expenses found in this statement. Only payments/credits detected.")
+            return None
         
         # Filter out any rows with missing data
-        df = df.dropna(subset=['description', 'amount'])
+        df_clean = df_clean.dropna(subset=['description', 'amount'])
+        
+        # Convert date to datetime
+        df_clean['date'] = pd.to_datetime(df_clean['date'], errors='coerce')
+        
+        # Drop rows with invalid dates
+        df_clean = df_clean.dropna(subset=['date'])
         
         # Sort by date (most recent first)
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        df = df.sort_values('date', ascending=False)
+        df_clean = df_clean.sort_values('date', ascending=False)
         
         # Reset index
-        df.reset_index(drop=True, inplace=True)
+        df_clean.reset_index(drop=True, inplace=True)
         
-        return df
+        # Show success message with detected columns
+        st.success(f"✅ Detected columns: Date='{col_mapping['date']}', Description='{col_mapping['description']}', Amount='{col_mapping['amount']}'")
+        
+        return df_clean
         
     except Exception as e:
         st.error(f"Error parsing CSV: {str(e)}")
-        st.error("Please make sure your CSV has the format: Entry Date | Value Date | Description | Amount | Balance")
+        st.error("Please make sure your CSV has columns containing: 'Date', 'Description', and 'Amount'")
         return None
 
 
 def parse_maybank_pdf(file):
     """
-    Parse Maybank PDF bank statement
+    Parse bank statement PDF with flexible column detection
     
-    Expected format: Table with columns
-    Entry Date | Value Date | Transaction Description | Transaction Amount | Statement Balance
+    Extracts tables and identifies columns containing:
+    - "date" (any column with date-like values)
+    - "description" (transaction descriptions)
+    - "amount" (transaction amounts)
     
     Args:
         file: Uploaded file object from Streamlit
         
     Returns:
-        pandas DataFrame with columns: date, description, amount, balance, transaction_type
+        pandas DataFrame with columns: date, description, amount, transaction_type, amount_abs
     """
     try:
         transactions = []
@@ -107,26 +194,39 @@ def parse_maybank_pdf(file):
                     if not table or len(table) < 2:  # Need at least header + 1 row
                         continue
                     
-                    # Skip header row (first row)
-                    for row in table[1:]:
-                        # Skip empty rows or rows with insufficient columns
-                        if not row or len(row) < 4:
-                            continue
-                        
-                        # Extract data (adjust indices based on Maybank PDF format)
-                        # Typical format: [Entry Date, Value Date, Description, Amount, Balance]
+                    # First row is usually headers
+                    headers = [str(h).strip() if h else f"col_{i}" for i, h in enumerate(table[0])]
+                    
+                    # Create temporary dataframe for this table
+                    temp_df = pd.DataFrame(table[1:], columns=headers)
+                    
+                    # Detect columns in this table
+                    col_mapping = detect_columns(temp_df)
+                    
+                    # Skip if essential columns not found
+                    if not col_mapping['date'] or not col_mapping['description'] or not col_mapping['amount']:
+                        continue
+                    
+                    # Extract data from each row
+                    for _, row in temp_df.iterrows():
                         try:
-                            entry_date = row[0] if row[0] else ""
-                            description = row[2] if len(row) > 2 else ""
-                            amount = row[3] if len(row) > 3 else "0"
-                            balance = row[4] if len(row) > 4 else ""
+                            date_val = row[col_mapping['date']] if col_mapping['date'] else ""
+                            desc_val = row[col_mapping['description']] if col_mapping['description'] else ""
+                            amount_val = row[col_mapping['amount']] if col_mapping['amount'] else "0"
+                            balance_val = row[col_mapping['balance']] if col_mapping['balance'] else ""
                             
-                            # Skip rows that don't look like transactions
-                            if not description or description.strip() == "":
+                            # Skip rows with empty description
+                            if not desc_val or str(desc_val).strip() == "" or str(desc_val).strip().lower() in ['nan', 'none']:
                                 continue
                             
-                            # Clean amount (remove currency symbols, commas)
-                            amount_clean = str(amount).replace('RM', '').replace(',', '').strip()
+                            # Clean amount (remove currency symbols, commas, handle CR)
+                            amount_clean = str(amount_val).strip()
+                            
+                            # Check if it's a credit (has CR suffix)
+                            is_credit = 'CR' in amount_clean.upper()
+                            
+                            # Remove CR, RM, $, commas
+                            amount_clean = amount_clean.replace('CR', '').replace('cr', '').replace('RM', '').replace('$', '').replace(',', '').strip()
                             
                             # Skip if amount is not a number
                             try:
@@ -134,11 +234,21 @@ def parse_maybank_pdf(file):
                             except:
                                 continue
                             
+                            # For credit card statements: CR = payment (positive), non-CR = expense (negative)
+                            if not is_credit and amount_float > 0:
+                                amount_float = -amount_float  # Make expenses negative
+                            elif is_credit and amount_float < 0:
+                                amount_float = abs(amount_float)  # Make credits positive
+                            
+                            # Skip zero amounts
+                            if amount_float == 0:
+                                continue
+                            
                             transactions.append({
-                                'date': entry_date,
-                                'description': description.strip(),
+                                'date': str(date_val).strip(),
+                                'description': str(desc_val).strip(),
                                 'amount': amount_float,
-                                'balance': balance
+                                'balance': str(balance_val).strip() if balance_val else None
                             })
                             
                         except Exception as row_error:
@@ -147,10 +257,17 @@ def parse_maybank_pdf(file):
         
         if not transactions:
             st.error("No transactions found in PDF. Please check the file format.")
+            st.info("💡 Tip: Make sure your PDF has a table with columns for Date, Description, and Amount")
             return None
         
         # Convert to DataFrame
         df = pd.DataFrame(transactions)
+        
+        # Convert date to datetime
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        
+        # Drop rows with invalid dates
+        df = df.dropna(subset=['date'])
         
         # Determine transaction type
         df['transaction_type'] = df['amount'].apply(lambda x: 'expense' if x < 0 else 'income')
@@ -158,8 +275,13 @@ def parse_maybank_pdf(file):
         # Make all amounts positive for display
         df['amount_abs'] = df['amount'].abs()
         
-        # Convert date to datetime
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        # FILTER: Keep only expenses (remove payments/income)
+        df = df[df['transaction_type'] == 'expense'].copy()
+        
+        # Check if any expenses remain
+        if df.empty:
+            st.warning("⚠️ No expenses found in this PDF. Only payments/credits detected.")
+            return None
         
         # Sort by date (most recent first)
         df = df.sort_values('date', ascending=False)
@@ -167,11 +289,13 @@ def parse_maybank_pdf(file):
         # Reset index
         df.reset_index(drop=True, inplace=True)
         
+        st.success(f"✅ Extracted {len(df)} transactions from PDF")
+        
         return df
         
     except Exception as e:
         st.error(f"Error parsing PDF: {str(e)}")
-        st.error("Please make sure your PDF is a valid Maybank statement.")
+        st.error("Please make sure your PDF is a valid bank statement with a table format.")
         return None
 
 
@@ -212,8 +336,8 @@ def get_transaction_summary(df):
         'total_transactions': len(df),
         'total_expenses': len(expenses),
         'total_spent': expenses['amount_abs'].sum(),
-        'average_transaction': expenses['amount_abs'].mean(),
-        'largest_expense': expenses['amount_abs'].max(),
+        'average_transaction': expenses['amount_abs'].mean() if len(expenses) > 0 else 0,
+        'largest_expense': expenses['amount_abs'].max() if len(expenses) > 0 else 0,
         'date_range_start': df['date'].min(),
         'date_range_end': df['date'].max()
     }

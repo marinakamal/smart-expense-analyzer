@@ -303,7 +303,7 @@ def rule_based_categorization(description):
     
     # Groceries
     grocery_keywords = ['grocer', 'market', 'aeon', 'tesco', 'jaya', 'village', 'supermarket',
-                        'family mart', '7-eleven', '99 speedmart']
+                        'family mart', '7-eleven', '99 speedmart', 'bean shipper']
     if any(keyword in description_lower for keyword in grocery_keywords):
         return "Groceries"
     
