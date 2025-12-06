@@ -123,12 +123,12 @@ def parse_maybank_csv(file):
         # Make all amounts positive for easier display
         df_clean['amount_abs'] = df_clean['amount'].abs()
         
-        # FILTER: Keep only expenses (remove payments/income)
+        # Filter out payments based on transaction_type (already set by description check above)
         df_clean = df_clean[df_clean['transaction_type'] == 'expense'].copy()
         
         # Check if any expenses remain
         if df_clean.empty:
-            st.warning("⚠️ No expenses found in this statement. Only payments/credits detected.")
+            st.warning("⚠️ No expenses found. All transactions appear to be payments.")
             return None
         
         # Filter out any rows with missing data
@@ -287,12 +287,12 @@ def parse_maybank_pdf(file):
         # Make all amounts positive for display
         df['amount_abs'] = df['amount'].abs()
         
-        # FILTER: Keep only expenses (remove payments/income)
+        # Filter out payments based on transaction_type (already set by description check above)
         df = df[df['transaction_type'] == 'expense'].copy()
         
         # Check if any expenses remain
         if df.empty:
-            st.warning("⚠️ No expenses found in this PDF. Only payments/credits detected.")
+            st.warning("⚠️ No expenses found. All transactions appear to be payments.")
             return None
         
         # Sort by date (most recent first)
