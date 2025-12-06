@@ -281,7 +281,7 @@ def parse_maybank_pdf(file):
         
         # Determine transaction type - exclude payments based on description
         df['transaction_type'] = df['description'].apply(
-            lambda x: 'income' if 'PYMT' in str(x).upper() or 'PAYMENT' in str(x).upper() else 'expense'
+            lambda x: 'income' if 'pymt' in str(x).lower() or 'payment' in str(x).lower() or 'payments' in str(x).lower() else 'expense'
         )
         
         # Make all amounts positive for display
