@@ -29,13 +29,21 @@ def detect_columns(df):
             break  # Take the FIRST date column
     mapping['date'] = date_col
     
-    # Detect DESCRIPTION column (any containing "description", "desc")
+    # Detect DESCRIPTION column (prioritize "description" over "transaction")
     desc_col = None
+    # First try: look for "description" or "desc" (most specific)
     for col in df.columns:
         col_lower = col.lower()
-        if any(keyword in col_lower for keyword in ['description', 'desc']):
+        if 'description' in col_lower or 'desc' in col_lower:
             desc_col = col
             break
+    # Second try: look for "particular" or "detail"
+    if not desc_col:
+        for col in df.columns:
+            col_lower = col.lower()
+            if 'particular' in col_lower or 'detail' in col_lower:
+                desc_col = col
+                break
     mapping['description'] = desc_col
     
     # Detect AMOUNT column (containing "amount", "debit", "credit", "value")
@@ -135,7 +143,10 @@ def parse_maybank_csv(file):
         df_clean = df_clean.dropna(subset=['description', 'amount'])
         
         # Convert date to datetime
-        df_clean['date'] = pd.to_datetime(df_clean['date'], errors='coerce')
+        # Dates are in format DD/MM, add current year
+        current_year = pd.Timestamp.now().year
+        df_clean['date'] = df_clean['date'].apply(lambda x: f"{x}/{current_year}" if len(str(x).split('/')) == 2 else x)
+        df_clean['date'] = pd.to_datetime(df_clean['date'], format='%d/%m/%Y', errors='coerce')
         
         # Drop rows with invalid dates
         df_clean = df_clean.dropna(subset=['date'])
@@ -275,7 +286,10 @@ def parse_maybank_pdf(file):
         df = pd.DataFrame(transactions)
         
         # Convert date to datetime
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        # Dates are in format DD/MM, add current year
+        current_year = pd.Timestamp.now().year
+        df['date'] = df['date'].apply(lambda x: f"{x}/{current_year}" if len(str(x).split('/')) == 2 else x)
+        df['date'] = pd.to_datetime(df['date'], format='%d/%m/%Y', errors='coerce')
         
         # Drop rows with invalid dates
         df = df.dropna(subset=['date'])
