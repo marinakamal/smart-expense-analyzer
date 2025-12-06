@@ -275,15 +275,6 @@ if df is not None:
         use_container_width=True,
         hide_index=True
     )
-    
-    # Download option
-    csv = filtered_df.to_csv(index=False)
-    st.download_button(
-        label="📥 Download Transactions as CSV",
-        data=csv,
-        file_name="categorized_transactions.csv",
-        mime="text/csv"
-    )
 
 else:
     # Show instructions when no file is uploaded
@@ -302,11 +293,10 @@ else:
         
         ### Supported Format
         Your bank statement should have these columns:
-        - Entry Date
-        - Value Date  
-        - Transaction Description
-        - Transaction Amount
-        - Statement Balance
+        - Date
+        - Description
+        - Amount
+        - Balance (Optional)
         
         ### Features
         - 🤖 **AI Categorization**: Automatic expense classification using HuggingFace transformers
