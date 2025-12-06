@@ -105,23 +105,20 @@ def parse_maybank_csv(file):
         else:
             df_clean['balance'] = None
         
-        # Clean amount column (remove commas, RM, currency symbols)
-        # Handle CR suffix (credits) - make them positive
+        # Clean amount column (remove commas, RM, currency symbols, CR suffix)
         df_clean['amount'] = df_clean['amount'].astype(str).str.strip()
-        
-        # Check if amount has "CR" suffix (credit)
-        is_credit = df_clean['amount'].str.contains('CR', case=False, na=False)
         
         # Remove CR, commas, RM, and currency symbols
         df_clean['amount'] = df_clean['amount'].str.replace('CR', '', case=False).str.replace(',', '').str.replace('RM', '').str.replace('$', '').str.strip()
         df_clean['amount'] = pd.to_numeric(df_clean['amount'], errors='coerce')
         
-        # For credit card statements: CR = payment (positive), non-CR = expense (negative)
-        df_clean.loc[is_credit, 'amount'] = df_clean.loc[is_credit, 'amount'].abs()  # Credits are positive
-        df_clean.loc[~is_credit, 'amount'] = -df_clean.loc[~is_credit, 'amount'].abs()  # Expenses are negative
+        # Make all amounts negative (expenses)
+        df_clean['amount'] = -df_clean['amount'].abs()
         
-        # Determine transaction type (expense vs income)
-        df_clean['transaction_type'] = df_clean['amount'].apply(lambda x: 'expense' if x < 0 else 'income')
+        # Determine transaction type - exclude payments based on description
+        df_clean['transaction_type'] = df_clean['description'].apply(
+            lambda x: 'income' if 'PYMT' in str(x).upper() or 'PAYMENT' in str(x).upper() else 'expense'
+        )
         
         # Make all amounts positive for easier display
         df_clean['amount_abs'] = df_clean['amount'].abs()
@@ -238,11 +235,8 @@ def parse_maybank_pdf(file):
                             if not desc_val or str(desc_val).strip() == "" or str(desc_val).strip().lower() in ['nan', 'none']:
                                 continue
                             
-                            # Clean amount (remove currency symbols, commas, handle CR)
+                            # Clean amount (remove currency symbols, commas, CR)
                             amount_clean = str(amount_val).strip()
-                            
-                            # Check if it's a credit (has CR suffix)
-                            is_credit = 'CR' in amount_clean.upper()
                             
                             # Remove CR, RM, $, commas
                             amount_clean = amount_clean.replace('CR', '').replace('cr', '').replace('RM', '').replace('$', '').replace(',', '').strip()
@@ -253,15 +247,8 @@ def parse_maybank_pdf(file):
                             except:
                                 continue
                             
-                            # For credit card statements: 
-                            # CR = payment/credit (positive, income)
-                            # Non-CR = expense (negative)
-                            if is_credit:
-                                # Payment - make positive if needed
-                                amount_float = abs(amount_float)
-                            else:
-                                # Expense - make negative
-                                amount_float = -abs(amount_float)
+                            # Make all amounts negative (expenses)
+                            amount_float = -abs(amount_float)
                             
                             # Skip zero amounts
                             if amount_float == 0:
@@ -292,8 +279,10 @@ def parse_maybank_pdf(file):
         # Drop rows with invalid dates
         df = df.dropna(subset=['date'])
         
-        # Determine transaction type
-        df['transaction_type'] = df['amount'].apply(lambda x: 'expense' if x < 0 else 'income')
+        # Determine transaction type - exclude payments based on description
+        df['transaction_type'] = df['description'].apply(
+            lambda x: 'income' if 'PYMT' in str(x).upper() or 'PAYMENT' in str(x).upper() else 'expense'
+        )
         
         # Make all amounts positive for display
         df['amount_abs'] = df['amount'].abs()
