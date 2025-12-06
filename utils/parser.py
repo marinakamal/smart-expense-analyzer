@@ -195,18 +195,19 @@ def parse_maybank_pdf(file):
                     
                     # SPECIAL HANDLING: Check if data is in one row with newline separators
                     # (Common in Maybank credit card statements)
-                    if len(table) == 2 and '\n' in str(table[1][0]):
+                    # Check for actual newline character (not string '\n')
+                    if len(table) == 2 and '\n' in table[1][0]:  # Check the actual cell content
                         # Split the single row by newlines
                         data_row = table[1]
                         split_data = []
                         
                         # Split each column by newlines
-                        max_rows = max(len(str(col).split('\n')) for col in data_row)
+                        max_rows = max(len(col.split('\n')) if col else 0 for col in data_row)
                         
                         for i in range(max_rows):
                             row_data = []
                             for col in data_row:
-                                col_values = str(col).split('\n')
+                                col_values = col.split('\n') if col else []
                                 row_data.append(col_values[i] if i < len(col_values) else "")
                             split_data.append(row_data)
                         
@@ -281,7 +282,7 @@ def parse_maybank_pdf(file):
         
         # Determine transaction type - exclude payments based on description
         df['transaction_type'] = df['description'].apply(
-            lambda x: 'income' if 'pymt' in str(x).lower() or 'payment' in str(x).lower() or 'payments' in str(x).lower() else 'expense'
+            lambda x: 'income' if 'PYMT' in str(x).upper() or 'PAYMENT' in str(x).upper() else 'expense'
         )
         
         # Make all amounts positive for display
