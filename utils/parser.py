@@ -117,9 +117,8 @@ def parse_maybank_csv(file):
         df_clean['amount'] = pd.to_numeric(df_clean['amount'], errors='coerce')
         
         # For credit card statements: CR = payment (positive), non-CR = expense (negative)
-        # Reverse the sign for expenses if not already negative
-        df_clean.loc[~is_credit & (df_clean['amount'] > 0), 'amount'] = -df_clean.loc[~is_credit & (df_clean['amount'] > 0), 'amount']
-        df_clean.loc[is_credit & (df_clean['amount'] < 0), 'amount'] = df_clean.loc[is_credit & (df_clean['amount'] < 0), 'amount'].abs()
+        df_clean.loc[is_credit, 'amount'] = df_clean.loc[is_credit, 'amount'].abs()  # Credits are positive
+        df_clean.loc[~is_credit, 'amount'] = -df_clean.loc[~is_credit, 'amount'].abs()  # Expenses are negative
         
         # Determine transaction type (expense vs income)
         df_clean['transaction_type'] = df_clean['amount'].apply(lambda x: 'expense' if x < 0 else 'income')
@@ -254,11 +253,15 @@ def parse_maybank_pdf(file):
                             except:
                                 continue
                             
-                            # For credit card statements: CR = payment (positive), non-CR = expense (negative)
-                            if not is_credit and amount_float > 0:
-                                amount_float = -amount_float  # Make expenses negative
-                            elif is_credit and amount_float < 0:
-                                amount_float = abs(amount_float)  # Make credits positive
+                            # For credit card statements: 
+                            # CR = payment/credit (positive, income)
+                            # Non-CR = expense (negative)
+                            if is_credit:
+                                # Payment - make positive if needed
+                                amount_float = abs(amount_float)
+                            else:
+                                # Expense - make negative
+                                amount_float = -abs(amount_float)
                             
                             # Skip zero amounts
                             if amount_float == 0:
