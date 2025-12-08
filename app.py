@@ -59,7 +59,7 @@ with st.sidebar:
 st.header("📁 Upload Your Bank Statement")
 
 # Two columns for upload options
-col1, col2 = st.columns(2)
+col1 = st.columns(1)
 
 with col1:
     uploaded_file = st.file_uploader(
@@ -68,8 +68,8 @@ with col1:
         help="Supports CSV and PDF formats"
     )
 
-with col2:
-    use_sample = st.button("🎲 Try Sample Data", width='stretch')
+# with col2:
+#     use_sample = st.button("🎲 Try Sample Data", width='stretch')
 
 # Initialize dataframe
 df = None
