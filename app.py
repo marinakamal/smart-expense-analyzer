@@ -336,5 +336,4 @@ else:
 
 # Footer
 st.markdown("---")
-st.caption("Made with ❤️ for CAIE Project | Powered by Streamlit, HuggingFace & Google Gemini")
 st.caption("© 2024 Smart Expense Analyzer | Batch 3")

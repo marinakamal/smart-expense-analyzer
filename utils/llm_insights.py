@@ -8,6 +8,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
+google_gemini_model = 'gemini-2.5-flash'
 
 def configure_gemini(api_key=None):
     """
@@ -127,7 +128,7 @@ Start with "Hey! I analyzed your spending..."
 """
 
         # Generate insights using Gemini
-        model = genai.GenerativeModel('gemini-2.5-flash-live')
+        model = genai.GenerativeModel(google_gemini_model)
         response = model.generate_content(prompt)
         
         return response.text
@@ -217,7 +218,7 @@ INSTRUCTIONS:
 YOUR RESPONSE:"""
 
         # Generate response
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel(google_gemini_model)
         response = model.generate_content(prompt)
         
         return response.text
@@ -276,7 +277,7 @@ Format as:
 [Your analysis and plan here]
 """
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel(google_gemini_model)
         response = model.generate_content(prompt)
         
         return response.text
@@ -336,7 +337,7 @@ Compare their spending to these benchmarks:
 Keep it encouraging and actionable.
 """
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel(google_gemini_model)
         response = model.generate_content(prompt)
         
         return response.text
