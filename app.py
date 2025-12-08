@@ -68,8 +68,8 @@ with col1:
         help="Supports CSV and PDF formats"
     )
 
-with col2:
-    use_sample = st.button("🎲 Try Sample Data", use_container_width=True)
+# with col2:
+#     use_sample = st.button("🎲 Try Sample Data", width='stretch')
 
 # Initialize dataframe
 df = None
@@ -85,13 +85,13 @@ if uploaded_file:
     if df is not None:
         st.success(f"✅ Parsed {len(df)} transactions successfully!")
 
-# Handle sample data
-elif use_sample:
-    with st.spinner("📄 Loading sample data..."):
-        df = generate_sample_data()
+# # Handle sample data
+# elif use_sample:
+#     with st.spinner("📄 Loading sample data..."):
+#         df = generate_sample_data()
     
-    if df is not None:
-        st.success(f"✅ Loaded {len(df)} sample transactions!")
+#     if df is not None:
+#         st.success(f"✅ Loaded {len(df)} sample transactions!")
 
 # Process data if available
 if df is not None:
@@ -178,7 +178,7 @@ if df is not None:
                 color_discrete_sequence=px.colors.qualitative.Set3
             )
             fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, width='stretch')
         
         with col2:
             # Bar chart
@@ -192,7 +192,7 @@ if df is not None:
                 color_continuous_scale='Reds'
             )
             fig_bar.update_layout(showlegend=False)
-            st.plotly_chart(fig_bar, use_container_width=True)
+            st.plotly_chart(fig_bar, width='stretch')
         
         # Category breakdown table
         st.markdown("#### Category Details")
@@ -272,7 +272,7 @@ if df is not None:
             'amount_abs': 'RM {:.2f}',
             'confidence': '{:.2%}'
         }),
-        use_container_width=True,
+        width='stretch',
         hide_index=True
     )
 
