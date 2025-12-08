@@ -64,7 +64,7 @@ def load_classifier():
 
 def categorize_transaction(description, classifier, confidence_threshold=0.5):
     """
-    Categorize a single transaction using zero-shot classification
+    Categorize a single transaction using zero-shot classification with rule-based fallback
     
     Args:
         description (str): Transaction description (e.g., "STARBUCKS KLCC")
@@ -91,12 +91,24 @@ def categorize_transaction(description, classifier, confidence_threshold=0.5):
         
         # If confidence is below threshold, mark as "Other"
         if top_score < confidence_threshold:
-            return "Other", top_score
+            top_category = "Other"
+        #   return "Other", top_score
+
+        # If AI categorised as "Other", try rule-based categorisation
+        if top_category == "Other":
+            rule_category = rule_based_categorization(description)
+            # If rule-based found a category (not "Other"), use it
+            if rule_category != "Other":
+                return rule_category, 0.85 #Assign high confidence for rule-based matching
+
         
         return top_category, top_score
         
     except Exception as e:
-        # If categorization fails, return Other
+        # If AI categorisation fails, try rule-based as fallback
+        rule_category = rule_based_categorization(description)
+        if rule_category != "Other":
+            return rule_category, 0.85
         return "Other", 0.0
 
 
@@ -297,13 +309,13 @@ def rule_based_categorization(description):
     
     # Food & Dining
     food_keywords = ['starbucks', 'mcdonald', 'kfc', 'pizza', 'restaurant', 'cafe', 'coffee', 
-                     'mamak', 'nasi', 'food', 'grab-food', 'foodpanda', 'dining']
+                     'mamak', 'nasi', 'food', 'grab-food', 'foodpanda', 'dining','jamie oliver']
     if any(keyword in description_lower for keyword in food_keywords):
         return "Food & Dining"
     
     # Groceries
     grocery_keywords = ['grocer', 'market', 'aeon', 'tesco', 'jaya', 'village', 'supermarket',
-                        'family mart', '7-eleven', '99 speedmart', 'bean shipper']
+                        'family mart', '7-eleven', '99 speedmart', 'bean shipper','bilabila','kk super mart']
     if any(keyword in description_lower for keyword in grocery_keywords):
         return "Groceries"
     
@@ -314,14 +326,14 @@ def rule_based_categorization(description):
         return "Transport"
     
     # Entertainment
-    entertainment_keywords = ['netflix', 'spotify', 'cinema', 'gsc', 'tgv', 'movie', 'game',
+    entertainment_keywords = ['netflix', 'spotify', 'cinema', 'gsc-mid valley', 'tgv', 'movie', 'game',
                              'steam', 'playstation', 'xbox', 'concert']
     if any(keyword in description_lower for keyword in entertainment_keywords):
         return "Entertainment"
     
     # Shopping
     shopping_keywords = ['shopee', 'lazada', 'zalora', 'uniqlo', 'h&m', 'zara', 'shopping',
-                        'mall', 'fashion', 'clothing']
+                        'mall', 'fashion', 'clothing','terrae','atome','watson''s','ghl*dreame']
     if any(keyword in description_lower for keyword in shopping_keywords):
         return "Shopping"
     
@@ -339,7 +351,7 @@ def rule_based_categorization(description):
     
     # Education
     education_keywords = ['university', 'college', 'school', 'course', 'udemy', 'coursera',
-                         'book', 'tuition', 'education']
+                         'book', 'tuition', 'education','mph']
     if any(keyword in description_lower for keyword in education_keywords):
         return "Education"
     

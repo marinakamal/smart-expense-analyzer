@@ -127,7 +127,7 @@ Start with "Hey! I analyzed your spending..."
 """
 
         # Generate insights using Gemini
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-2.5-flash-live')
         response = model.generate_content(prompt)
         
         return response.text

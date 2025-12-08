@@ -58,18 +58,13 @@ with st.sidebar:
 # Main content area
 st.header("📁 Upload Your Bank Statement")
 
-# Two columns for upload options
-col1 = st.columns(1)
 
-with col1:
-    uploaded_file = st.file_uploader(
-        "Upload Maybank Statement",
-        type=['csv', 'pdf'],
-        help="Supports CSV and PDF formats"
-    )
-
-# with col2:
-#     use_sample = st.button("🎲 Try Sample Data", width='stretch')
+#File upload section
+uploaded_file = st.file_uploader(
+    "Upload Maybank Statement",
+    type=['csv', 'pdf'],
+    help="Supports CSV and PDF formats"
+)
 
 # Initialize dataframe
 df = None
@@ -278,14 +273,13 @@ if df is not None:
 
 else:
     # Show instructions when no file is uploaded
-    st.info("👆 Upload your bank statement to get started, or try sample data!")
+    st.info("👆 Upload your bank statement to get started!")
     
     with st.expander("ℹ️ How to use this app"):
         st.markdown("""
         ### Getting Started
         
         **Step 1:** Upload your Maybank bank statement (CSV or PDF format)
-        - Or click "Try Sample Data" to see a demo
         
         **Step 2:** Enter your monthly income and savings amount in the sidebar
         
