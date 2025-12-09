@@ -337,3 +337,19 @@ else:
 # Footer
 st.markdown("---")
 st.caption("© 2024 Smart Expense Analyzer | Batch 3")
+
+# Cache the HuggingFace model (loads once)
+@st.cache_resource
+def load_categorizer():
+    from utils.categorizer import ExpenseCategorizer
+    return ExpenseCategorizer()
+
+# Cache expensive computations
+@st.cache_data
+def categorize_transactions(df):
+    categorizer = load_categorizer()
+    return categorizer.categorize_dataframe(df)
+
+# Use session state to avoid re-processing
+if 'categorized_df' not in st.session_state:
+    st.session_state.categorized_df = categorize_transactions(df)
