@@ -72,7 +72,7 @@ smart-expense-analyzer/
 
 ### Supported Format
 ```
-Entry Date | Value Date | Description | Amount | Balance
+Date | Description | Amount
 ```
 
 ## 🛠️ Technologies
@@ -106,4 +106,4 @@ MIT License - feel free to use for learning and portfolio purposes!
 
 ---
 
-**Made with ❤️ for CAIE Final Project**
+**Made for CAIE Final Project**
