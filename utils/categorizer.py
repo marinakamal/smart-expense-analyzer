@@ -3,7 +3,7 @@ categorizer.py - AI-Powered Expense Categorization
 Uses HuggingFace transformers for zero-shot classification
 """
 
-from transformers import pipeline
+#from transformers import pipeline
 import streamlit as st
 import pandas as pd
 
@@ -37,39 +37,39 @@ CATEGORY_ICONS = {
 
 
 @st.cache_resource
-def load_classifier():
-    """
-    Load the HuggingFace zero-shot classification model
+# def load_classifier():
+#     """
+#     Load the HuggingFace zero-shot classification model
     
-    Uses caching to avoid reloading the model on every run
-    This model download happens only once (first time)
+#     Uses caching to avoid reloading the model on every run
+#     This model download happens only once (first time)
     
-    Returns:
-        HuggingFace pipeline for zero-shot classification
-    """
-    try:
-        # Load zero-shot classification pipeline
-        # Using facebook/bart-large-mnli - good balance of speed and accuracy
-        classifier = pipeline(
-            "zero-shot-classification",
-            model="facebook/bart-large-mnli", #Default (500MB)
-            #model="typeform/distilbert-base-uncased-mnli",  # Smaller (250MB)
-            device=-1  # Use CPU (set to 0 for GPU if available)
-        )
-        return classifier
-    except Exception as e:
-        st.error(f"Error loading AI model: {str(e)}")
-        return None
+#     Returns:
+#         HuggingFace pipeline for zero-shot classification
+#     """
+#     try:
+#         # Load zero-shot classification pipeline
+#         # Using facebook/bart-large-mnli - good balance of speed and accuracy
+#         classifier = pipeline(
+#             "zero-shot-classification",
+#             model="facebook/bart-large-mnli", #Default (500MB)
+#             #model="typeform/distilbert-base-uncased-mnli",  # Smaller (250MB)
+#             device=-1  # Use CPU (set to 0 for GPU if available)
+#         )
+#         return classifier
+#     except Exception as e:
+#         st.error(f"Error loading AI model: {str(e)}")
+#         return None
 
 
-def categorize_transaction(description, classifier, confidence_threshold=0.5):
+def categorize_transaction(description, classifier=None, confidence_threshold=0.5):
     """
-    Categorize a single transaction using zero-shot classification with rule-based fallback
+    Categorize a single transaction using rule-based classification
     
     Args:
         description (str): Transaction description (e.g., "STARBUCKS KLCC")
-        classifier: HuggingFace pipeline object
-        confidence_threshold (float): Minimum confidence to accept category (0-1)
+        classifier: Not used (kept for compatibility)
+        confidence_threshold (float): Not used (kept for compatibility)
         
     Returns:
         tuple: (category_name, confidence_score)
@@ -77,39 +77,11 @@ def categorize_transaction(description, classifier, confidence_threshold=0.5):
     if not description or description.strip() == "":
         return "Other", 0.0
     
-    try:
-        # Run zero-shot classification
-        result = classifier(
-            description,
-            candidate_labels=CATEGORIES,
-            multi_label=False
-        )
-        
-        # Get top prediction
-        top_category = result['labels'][0]
-        top_score = result['scores'][0]
-        
-        # If confidence is below threshold, mark as "Other"
-        if top_score < confidence_threshold:
-            top_category = "Other"
-        #   return "Other", top_score
-
-        # If AI categorised as "Other", try rule-based categorisation
-        if top_category == "Other":
-            rule_category = rule_based_categorization(description)
-            # If rule-based found a category (not "Other"), use it
-            if rule_category != "Other":
-                return rule_category, 0.85 #Assign high confidence for rule-based matching
-
-        
-        return top_category, top_score
-        
-    except Exception as e:
-        # If AI categorisation fails, try rule-based as fallback
-        rule_category = rule_based_categorization(description)
-        if rule_category != "Other":
-            return rule_category, 0.85
-        return "Other", 0.0
+    # Use rule-based categorization
+    category = rule_based_categorization(description)
+    confidence = 0.90 if category != "Other" else 0.50
+    
+    return category, confidence
 
 
 def categorize_dataframe(df, show_progress=True):
@@ -131,12 +103,8 @@ def categorize_dataframe(df, show_progress=True):
         st.error("DataFrame must have 'description' column")
         return None
     
-    # Load the classifier
-    classifier = load_classifier()
-    
-    if classifier is None:
-        st.error("Failed to load AI classifier")
-        return None
+    # No classifier needed for rule-based approach
+    classifier = None
     
     # Initialize lists for results
     categories = []
