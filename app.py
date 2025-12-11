@@ -19,7 +19,7 @@ from utils.categorizer import (
     CATEGORY_ICONS
 )
 from utils.llm_insights import (
-    generate_financial_insights, 
+    #generate_financial_insights, 
     chat_with_gemini, 
     create_chatbot_context
 )
@@ -138,19 +138,19 @@ if df is not None:
             delta="After expenses & savings"
         )
     
-    # LLM Insights Generation
-    st.markdown("---")
-    st.subheader("💡 AI Financial Insights")
+    # # LLM Insights Generation
+    # st.markdown("---")
+    # st.subheader("💡 AI Financial Insights")
     
-    with st.spinner("🧠 Generating personalized insights..."):
-        insights = generate_financial_insights(df, income, savings)
+    # with st.spinner("🧠 Generating personalized insights..."):
+    #     insights = generate_financial_insights(df, income, savings)
     
-    # Display insights in a nice box
-    st.markdown(f"""
-    <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; border-left: 5px solid #1f77b4;">
-    {insights}
-    </div>
-    """, unsafe_allow_html=True)
+    # # Display insights in a nice box
+    # st.markdown(f"""
+    # <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; border-left: 5px solid #1f77b4;">
+    # {insights}
+    # </div>
+    # """, unsafe_allow_html=True)
     
     # Category Breakdown
     st.markdown("---")
@@ -173,7 +173,7 @@ if df is not None:
                 color_discrete_sequence=px.colors.qualitative.Set3
             )
             fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig_pie, width='stretch')
+            st.plotly_chart(fig_pie, use_container_width=True)
         
         with col2:
             # Bar chart
@@ -187,7 +187,7 @@ if df is not None:
                 color_continuous_scale='Reds'
             )
             fig_bar.update_layout(showlegend=False)
-            st.plotly_chart(fig_bar, width='stretch')
+            st.plotly_chart(fig_bar, use_container_width=True)
         
         # Category breakdown table
         st.markdown("#### Category Details")
@@ -339,17 +339,17 @@ st.markdown("---")
 st.caption("© 2024 Smart Expense Analyzer | Batch 3")
 
 # Cache the HuggingFace model (loads once)
-@st.cache_resource
-def load_categorizer():
-    from utils.categorizer import ExpenseCategorizer
-    return ExpenseCategorizer()
+#@st.cache_resource
+# def load_categorizer():
+#     from utils.categorizer import ExpenseCategorizer
+#     return ExpenseCategorizer()
 
 # Cache expensive computations
-@st.cache_data
-def categorize_transactions(df):
-    categorizer = load_categorizer()
-    return categorizer.categorize_dataframe(df)
+#@st.cache_data
+# def categorize_transactions(df):
+#     categorizer = load_categorizer()
+#     return categorizer.categorize_dataframe(df)
 
 # Use session state to avoid re-processing
-if 'categorized_df' not in st.session_state:
-    st.session_state.categorized_df = categorize_transactions(df)
+# if 'categorized_df' not in st.session_state:
+#     st.session_state.categorized_df = categorize_transactions(df)

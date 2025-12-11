@@ -39,102 +39,102 @@ def configure_gemini(api_key=None):
 
 
 @st.cache_data(ttl=3600)
-def generate_financial_insights(_df, income, savings):
-    """
-    Generate personalized financial insights using Google Gemini
+# def generate_financial_insights(_df, income, savings):
+#     """
+#     Generate personalized financial insights using Google Gemini
     
-    Args:
-        _df (DataFrame): Categorized transaction data (underscore for Streamlit caching)
-        income (float): Monthly income
-        savings (float): Amount already saved/invested
-    Returns:
-        str: Generated insights text
-    """
-    if not configure_gemini():
-        return "Unable to generate insights: API key not configured"
+#     Args:
+#         _df (DataFrame): Categorized transaction data (underscore for Streamlit caching)
+#         income (float): Monthly income
+#         savings (float): Amount already saved/invested
+#     Returns:
+#         str: Generated insights text
+#     """
+#     if not configure_gemini():
+#         return "Unable to generate insights: API key not configured"
     
-    try:
-        # Prepare data summary
-        total_spent = _df['amount_abs'].sum()
-        spending_rate = (total_spent / income) * 100 if income > 0 else 0
+#     try:
+#         # Prepare data summary
+#         total_spent = _df['amount_abs'].sum()
+#         spending_rate = (total_spent / income) * 100 if income > 0 else 0
         
-        # Get category breakdown
-        category_summary = _df.groupby('category')['amount_abs'].sum().sort_values(ascending=False)
-        top_categories = category_summary.head(5)
+#         # Get category breakdown
+#         category_summary = _df.groupby('category')['amount_abs'].sum().sort_values(ascending=False)
+#         top_categories = category_summary.head(5)
         
-        # Format category breakdown for prompt
-        category_text = "\n".join([
-            f"  - {cat}: RM {amount:,.2f} ({amount/total_spent*100:.1f}%)"
-            for cat, amount in top_categories.items()
-        ])
+#         # Format category breakdown for prompt
+#         category_text = "\n".join([
+#             f"  - {cat}: RM {amount:,.2f} ({amount/total_spent*100:.1f}%)"
+#             for cat, amount in top_categories.items()
+#         ])
         
-        # Get top 5 individual expenses
-        top_expenses = _df.nlargest(5, 'amount_abs')[['description', 'amount_abs', 'category']]
-        expenses_text = "\n".join([
-            f"  - RM {row['amount_abs']:,.2f}: {row['description']} ({row['category']})"
-            for _, row in top_expenses.iterrows()
-        ])
+#         # Get top 5 individual expenses
+#         top_expenses = _df.nlargest(5, 'amount_abs')[['description', 'amount_abs', 'category']]
+#         expenses_text = "\n".join([
+#             f"  - RM {row['amount_abs']:,.2f}: {row['description']} ({row['category']})"
+#             for _, row in top_expenses.iterrows()
+#         ])
         
-        # Build prompt
-        prompt = f"""You are a friendly financial coach analyzing a user's monthly spending.
+#         # Build prompt
+#         prompt = f"""You are a friendly financial coach analyzing a user's monthly spending.
 
-USER'S FINANCIAL DATA:
-- Monthly Income: RM {income:,.2f}
-- Total Spent This Month: RM {total_spent:,.2f}
-- Already Saved/Invested: RM {savings:,.2f}
-- Spending Rate: {spending_rate:.1f}% of income
-- Remaining After Expenses & Savings: RM {(income - total_spent - savings):,.2f}
+# USER'S FINANCIAL DATA:
+# - Monthly Income: RM {income:,.2f}
+# - Total Spent This Month: RM {total_spent:,.2f}
+# - Already Saved/Invested: RM {savings:,.2f}
+# - Spending Rate: {spending_rate:.1f}% of income
+# - Remaining After Expenses & Savings: RM {(income - total_spent - savings):,.2f}
 
-SPENDING BY CATEGORY (Top 5):
-{category_text}
+# SPENDING BY CATEGORY (Top 5):
+# {category_text}
 
-LARGEST INDIVIDUAL EXPENSES (Top 5):
-{expenses_text}
+# LARGEST INDIVIDUAL EXPENSES (Top 5):
+# {expenses_text}
 
-TASK:
-Provide personalized financial insights in a friendly, encouraging tone. Your response should:
+# TASK:
+# Provide personalized financial insights in a friendly, encouraging tone. Your response should:
 
-1. START with a warm greeting and spending summary (2-3 sentences)
-   - Example: "Hey! I analyzed your spending for this month. You spent RM {total_spent:,.2f}, which is {spending_rate:.1f}% of your RM {income:,.2f} income."
+# 1. START with a warm greeting and spending summary (2-3 sentences)
+#    - Example: "Hey! I analyzed your spending for this month. You spent RM {total_spent:,.2f}, which is {spending_rate:.1f}% of your RM {income:,.2f} income."
 
-2. IDENTIFY 2-3 key observations about their spending patterns
-   - Point out the highest spending categories
-   - Note any concerning patterns (e.g., high food delivery, unused subscriptions)
-   - Celebrate positive habits if any (e.g., good savings rate, low transport costs)
+# 2. IDENTIFY 2-3 key observations about their spending patterns
+#    - Point out the highest spending categories
+#    - Note any concerning patterns (e.g., high food delivery, unused subscriptions)
+#    - Celebrate positive habits if any (e.g., good savings rate, low transport costs)
 
-3. PROVIDE 3 specific, actionable savings recommendations
-   - Each recommendation should include:
-     * What to do (be specific and practical)
-     * Estimated monthly savings amount
-     * Why this will help
-   - Examples:
-     * "Cook 2 more meals at home per week instead of ordering delivery. You could save around RM 150/month!"
-     * "Review your subscriptions - canceling unused ones could free up RM 50/month."
-     * "Use public transport 2 days a week instead of Grab - save RM 80/month on transport."
+# 3. PROVIDE 3 specific, actionable savings recommendations
+#    - Each recommendation should include:
+#      * What to do (be specific and practical)
+#      * Estimated monthly savings amount
+#      * Why this will help
+#    - Examples:
+#      * "Cook 2 more meals at home per week instead of ordering delivery. You could save around RM 150/month!"
+#      * "Review your subscriptions - canceling unused ones could free up RM 50/month."
+#      * "Use public transport 2 days a week instead of Grab - save RM 80/month on transport."
 
-4. SUGGEST realistic budget targets for top 2 categories
-   - Based on their income level
-   - Example: "Try to keep Food & Dining under RM 600 (20% of income) next month."
+# 4. SUGGEST realistic budget targets for top 2 categories
+#    - Based on their income level
+#    - Example: "Try to keep Food & Dining under RM 600 (20% of income) next month."
 
-TONE & STYLE:
-- Friendly and conversational (like talking to a supportive friend)
-- Encouraging and positive (no judgment!)
-- Specific with numbers and percentages
-- Action-oriented (tell them exactly what to do)
-- Use Malaysian context (RM currency, local places/brands)
+# TONE & STYLE:
+# - Friendly and conversational (like talking to a supportive friend)
+# - Encouraging and positive (no judgment!)
+# - Specific with numbers and percentages
+# - Action-oriented (tell them exactly what to do)
+# - Use Malaysian context (RM currency, local places/brands)
 
-Keep your response focused and helpful - around 250-300 words.
-Start with "Hey! I analyzed your spending..."
-"""
+# Keep your response focused and helpful - around 250-300 words.
+# Start with "Hey! I analyzed your spending..."
+# """
 
-        # Generate insights using Gemini
-        model = genai.GenerativeModel(google_gemini_model)
-        response = model.generate_content(prompt)
+#         # Generate insights using Gemini
+#         model = genai.GenerativeModel(google_gemini_model)
+#         response = model.generate_content(prompt)
         
-        return response.text
+#         return response.text
         
-    except Exception as e:
-        return f"Error generating insights: {str(e)}\n\nPlease check your API key and internet connection."
+#     except Exception as e:
+#         return f"Error generating insights: {str(e)}\n\nPlease check your API key and internet connection."
 
 
 def create_chatbot_context(_df, income, savings):
