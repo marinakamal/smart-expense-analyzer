@@ -205,43 +205,7 @@ if df is not None:
             with col4:
                 st.write(f"{int(row['count'])} transactions")
     
-    # Interactive Chatbot
-    st.markdown("---")
-    st.subheader("💬 Ask Your Financial Coach")
-    st.markdown("Ask me anything about your spending, savings goals, or budget planning!")
-    
-    # Initialize chat history in session state
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
-    
-    # Display chat history
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-    
-    # Chat input
-    if prompt := st.chat_input("💭 Ask a question (e.g., 'How can I save RM 500 next month?')"):
-        # Add user message to history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        # Display user message
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        # Generate AI response
-        with st.chat_message("assistant"):
-            with st.spinner("🤔 Thinking..."):
-                context = create_chatbot_context(df, income, savings)
-                response = chat_with_gemini(
-                    prompt, 
-                    st.session_state.messages,
-                    context
-                )
-                st.markdown(response)
-        
-        # Add assistant message to history
-        st.session_state.messages.append({"role": "assistant", "content": response})
-    
+       
     # Transaction Details
     st.markdown("---")
     st.subheader("📋 All Transactions")
@@ -270,6 +234,50 @@ if df is not None:
         width='stretch',
         hide_index=True
     )
+    # Interactive Chatbot
+    st.markdown("---")
+    st.subheader("💬 Ask Your Financial Coach")
+    st.markdown("Ask me anything about your spending, savings goals, or budget planning!")
+    st.markdown("""
+            **Example questions:**
+            - "How can I save RM 500 next month?"
+            - "What category should I cut spending on?"
+            - "Help me create a realistic budget"
+            - "Is my food spending too high?"
+                """)
+    
+    # Initialize chat history in session state
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    
+    # Display chat history
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+    
+
+    # Chat input
+    if prompt := st.chat_input("💭 Ask a question (e.g., 'How can I save RM 500 next month?')"):
+        # Add user message to history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # Display user message
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # Generate AI response
+        with st.chat_message("assistant"):
+            with st.spinner("🤔 Thinking..."):
+                context = create_chatbot_context(df, income, savings)
+                response = chat_with_gemini(
+                    prompt, 
+                    st.session_state.messages,
+                    context
+                )
+                st.markdown(response)
+        
+        # Add assistant message to history
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
 else:
     # Show instructions when no file is uploaded
