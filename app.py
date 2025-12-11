@@ -301,8 +301,7 @@ else:
         - Balance (Optional)
         
         ### Features
-        - 🤖 **AI Categorization**: Automatic expense classification using HuggingFace transformers
-        - 💡 **Personalized Insights**: LLM-powered recommendations using Google Gemini
+        - 🤖 **Categorization**: Automatic expense classification using rule-based categorisation
         - 📊 **Visual Analytics**: Interactive charts and spending breakdown
         - 💬 **Financial Chatbot**: Ask questions about your budget and get personalized advice
         
@@ -323,7 +322,6 @@ else:
         **📊 Track Spending**
         - See where your money goes
         - Identify spending patterns
-        - Compare to income
         """)
     
     with col2:
@@ -331,7 +329,6 @@ else:
         **💰 Save More**
         - Get personalized savings tips
         - Set realistic budget targets
-        - Track progress monthly
         """)
     
     with col3:
