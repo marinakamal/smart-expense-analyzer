@@ -1,12 +1,14 @@
 # Smart Expense Analyzer 💰
 
-AI-powered financial assistant that analyzes bank statements and provides personalized savings insights.
+Financial analysis tool that categorizes bank transactions and provides spending insights using Machine Learning and LLM chatbot.
 
 ## 🎯 Features
 
-- 🤖 **AI Expense Categorization** - Automatic classification using HuggingFace transformers
-- 💡 **Personalized Insights** - LLM-powered financial advice using Google Gemini
-- 💬 **Interactive Chatbot** - Ask questions about your spending
+- 📋 **Rule-Based Categorization** - Automatic expense classification using keyword matching
+- 🤖 **ML Clustering Analysis** - K-Means algorithm groups spending patterns
+- ⏱️ **ML Frequency Analysis** - Analyzes purchase frequency per category
+- 💬 **LLM Financial Chatbot** - Conversational advice using Google Gemini API
+- ✏️ **Manual Categorization** - Correct uncategorized transactions manually
 - 📊 **Visual Dashboard** - Interactive charts and spending breakdown
 
 ## 🚀 Quick Start
@@ -49,13 +51,12 @@ streamlit run app.py
 The app will open in your browser at `http://localhost:8501`
 
 ## 📁 Project Structure
-
 ```
 smart-expense-analyzer/
 ├── app.py                    # Main Streamlit application
 ├── utils/
 │   ├── parser.py            # CSV/PDF parsing functions
-│   ├── categorizer.py       # HuggingFace classification
+│   ├── categorizer.py       # Rule-based classification + ML analysis
 │   └── llm_insights.py      # Gemini LLM integration
 ├── data/
 │   └── sample_statement.csv # Sample data for demo
@@ -66,43 +67,51 @@ smart-expense-analyzer/
 ## 💻 Usage
 
 1. **Upload Statement:** Upload your Maybank bank statement (CSV or PDF format)
-2. **Enter Context:** Provide your monthly income and savings amount
-3. **Get Insights:** Receive AI-powered analysis and recommendations
-4. **Ask Questions:** Use the chatbot for personalized advice
+2. **Enter Context:** Provide your monthly income and savings amount in sidebar
+3. **View Analysis:** 
+   - Category breakdown with charts
+   - ML clustering patterns (automatically generated)
+   - Purchase frequency predictions (automatically generated)
+4. **Manual Corrections:** Categorize any uncategorized transactions
+5. **Ask Questions:** Use the chatbot for personalized financial advice
 
 ### Supported Format
+CSV with columns:
 ```
-Date | Description | Amount
+Date, Description, Amount, Balance
 ```
 
 ## 🛠️ Technologies
 
 - **Frontend:** Streamlit
-- **AI/ML:** HuggingFace Transformers, Google Gemini API
-- **Data Processing:** pandas, pdfplumber
+- **LLM:** Google Gemini API
+- **Machine Learning:** scikit-learn (K-Means Clustering, Time Series Analysis)
+- **Data Processing:** pandas, numpy
 - **Visualization:** Plotly
 
 ## 📊 Demo
 
-Try the live demo: [Coming Soon]
+Try with the included `sample_bank_statement.csv` (50 sample transactions)
 
 ## 🎓 CAIE Project
 
 This project is part of the Certified AI Engineer (CAIE) program by USAII, demonstrating:
-- LLM functionality (Google Gemini)
-- Traditional AI component (Transformer-based classification)
-- Real-world use case (Personal finance management)
-- Full-stack deployment
+- **LLM Functionality:** Google Gemini chatbot for financial advice
+- **ML Components:** 
+  - K-Means clustering for spending pattern analysis
+  - Time series analysis for purchase frequency prediction
+- **Real-world Use Case:** Personal finance management
+- **Working Interface:** Streamlit web application
 
 ## 📝 License
 
-MIT License - feel free to use for learning and portfolio purposes!
+MIT License - free to use for learning and portfolio purposes
 
 ## 👤 Author
 
-**Nik Marina Binti Nik Ahmad Kamal**
-- Email: marinakamal@gmail.com
-- Batch: August 2025 / Batch 3
+**Nik Marina Kamal**
+- LinkedIn: [linkedin.com/in/nikmarinakamal](https://www.linkedin.com/in/nikmarinakamal)
+- CAIE Batch 3
 
 ---
 
