@@ -1,11 +1,14 @@
 """
-categorizer.py - AI-Powered Expense Categorization
-Uses HuggingFace transformers for zero-shot classification
+categorizer.py - Expense Categorization with Machine Learning
+Uses rule-based classification + ML analysis (K-Means Clustering & Frequency Analysis)
 """
 
-#from transformers import pipeline
 import streamlit as st
 import pandas as pd
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from datetime import datetime, timedelta
 
 # Define spending categories
 CATEGORIES = [
@@ -35,33 +38,15 @@ CATEGORY_ICONS = {
     "Other": "❓"
 }
 
+# Cluster profile descriptions
+CLUSTER_PROFILES = {
+    0: {"name": "Daily Small Purchases", "icon": "🟢", "description": "Frequent low-value transactions"},
+    1: {"name": "Weekly Mid-Range", "icon": "🟡", "description": "Regular moderate spending"},
+    2: {"name": "Monthly Large Bills", "icon": "🔴", "description": "Infrequent high-value payments"}
+}
+
 
 @st.cache_resource
-# def load_classifier():
-#     """
-#     Load the HuggingFace zero-shot classification model
-    
-#     Uses caching to avoid reloading the model on every run
-#     This model download happens only once (first time)
-    
-#     Returns:
-#         HuggingFace pipeline for zero-shot classification
-#     """
-#     try:
-#         # Load zero-shot classification pipeline
-#         # Using facebook/bart-large-mnli - good balance of speed and accuracy
-#         classifier = pipeline(
-#             "zero-shot-classification",
-#             model="facebook/bart-large-mnli", #Default (500MB)
-#             #model="typeform/distilbert-base-uncased-mnli",  # Smaller (250MB)
-#             device=-1  # Use CPU (set to 0 for GPU if available)
-#         )
-#         return classifier
-#     except Exception as e:
-#         st.error(f"Error loading AI model: {str(e)}")
-#         return None
-
-
 def categorize_transaction(description, classifier=None, confidence_threshold=0.5):
     """
     Categorize a single transaction using rule-based classification
@@ -179,89 +164,242 @@ def get_category_breakdown(df):
     return category_summary
 
 
-def get_top_expenses_by_category(df, category_name, top_n=5):
+# ==================== MACHINE LEARNING METHODS ====================
+
+def perform_clustering_analysis(df, n_clusters=3):
     """
-    Get top N expenses within a specific category
+    ML METHOD 1: K-Means Clustering Analysis
+    Groups transactions into spending patterns based on amount and frequency
     
     Args:
-        df (DataFrame): Categorized transaction data
-        category_name (str): Category to filter by
-        top_n (int): Number of top expenses to return
+        df (DataFrame): Transaction data with 'amount_abs' and 'date' columns
+        n_clusters (int): Number of clusters (default: 3)
         
     Returns:
-        DataFrame: Top expenses in the category
+        dict: Clustering results with cluster assignments and analysis
     """
-    if df is None or df.empty or 'category' not in df.columns:
+    if df is None or df.empty:
         return None
     
-    # Filter by category
-    category_df = df[df['category'] == category_name].copy()
-    
-    if category_df.empty:
+    if 'amount_abs' not in df.columns:
         return None
     
-    # Sort by amount (highest first)
-    amount_col = 'amount_abs' if 'amount_abs' in df.columns else 'amount'
-    category_df = category_df.nlargest(top_n, amount_col)
+    # Prepare features for clustering
+    # Feature 1: Transaction amount
+    # Feature 2: Day of month (to capture timing patterns)
+    features = []
     
-    return category_df[['date', 'description', amount_col, 'confidence']]
-
-
-def get_categorization_stats(df):
-    """
-    Get statistics about the categorization process
-    
-    Args:
-        df (DataFrame): Categorized transaction data
+    for idx, row in df.iterrows():
+        amount = row['amount_abs']
         
-    Returns:
-        dict: Statistics about categorization quality
-    """
-    if df is None or df.empty or 'category' not in df.columns:
-        return None
+        # Extract day of month if date column exists
+        if 'date' in df.columns:
+            try:
+                if isinstance(row['date'], str):
+                    date_obj = pd.to_datetime(row['date'])
+                else:
+                    date_obj = row['date']
+                day_of_month = date_obj.day
+            except:
+                day_of_month = 15  # Default to mid-month
+        else:
+            day_of_month = 15
+        
+        features.append([amount, day_of_month])
     
-    stats = {
-        'total_transactions': len(df),
-        'categorized': len(df[df['category'] != 'Other']),
-        'uncategorized': len(df[df['category'] == 'Other']),
-        'average_confidence': df['confidence'].mean(),
-        'high_confidence': len(df[df['confidence'] > 0.8]),
-        'low_confidence': len(df[df['confidence'] < 0.5]),
-        'unique_categories': df['category'].nunique()
+    features_array = np.array(features)
+    
+    # Standardize features (important for K-Means)
+    scaler = StandardScaler()
+    features_scaled = scaler.fit_transform(features_array)
+    
+    # Apply K-Means clustering
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(features_scaled)
+    
+    # Add cluster labels to dataframe
+    df_clustered = df.copy()
+    df_clustered['cluster'] = cluster_labels
+    
+    # Analyze each cluster
+    cluster_analysis = []
+    
+    for cluster_id in range(n_clusters):
+        cluster_data = df_clustered[df_clustered['cluster'] == cluster_id]
+        
+        # Calculate cluster statistics
+        avg_amount = cluster_data['amount_abs'].mean()
+        total_amount = cluster_data['amount_abs'].sum()
+        transaction_count = len(cluster_data)
+        
+        # Get top categories in this cluster
+        if 'category' in cluster_data.columns:
+            top_categories = cluster_data['category'].value_counts().head(3).to_dict()
+        else:
+            top_categories = {}
+        
+        # Assign cluster profile based on average amount
+        if avg_amount < 50:
+            profile_id = 0  # Small purchases
+        elif avg_amount < 200:
+            profile_id = 1  # Mid-range
+        else:
+            profile_id = 2  # Large bills
+        
+        cluster_info = {
+            'cluster_id': cluster_id,
+            'profile': CLUSTER_PROFILES[profile_id],
+            'transaction_count': transaction_count,
+            'avg_amount': avg_amount,
+            'total_amount': total_amount,
+            'top_categories': top_categories,
+            'percentage_of_transactions': (transaction_count / len(df)) * 100
+        }
+        
+        cluster_analysis.append(cluster_info)
+    
+    # Sort clusters by average amount (ascending)
+    cluster_analysis = sorted(cluster_analysis, key=lambda x: x['avg_amount'])
+    
+    return {
+        'df_with_clusters': df_clustered,
+        'cluster_analysis': cluster_analysis,
+        'n_clusters': n_clusters
     }
-    
-    stats['categorization_rate'] = (stats['categorized'] / stats['total_transactions'] * 100)
-    
-    return stats
 
 
-def suggest_recategorization(df, confidence_threshold=0.5):
+def analyze_transaction_frequency(df):
     """
-    Find transactions that might need manual review
+    ML METHOD 2: Transaction Frequency Analysis
+    Analyzes spending frequency patterns per category using time series analysis
+    
+    Args:
+        df (DataFrame): Transaction data with 'category' and 'date' columns
+        
+    Returns:
+        dict: Frequency analysis results per category
+    """
+    if df is None or df.empty:
+        return None
+    
+    if 'category' not in df.columns or 'date' not in df.columns:
+        return None
+    
+    # Convert date column to datetime if it isn't already
+    df_freq = df.copy()
+    if not pd.api.types.is_datetime64_any_dtype(df_freq['date']):
+        df_freq['date'] = pd.to_datetime(df_freq['date'])
+    
+    # Sort by date
+    df_freq = df_freq.sort_values('date')
+    
+    frequency_analysis = []
+    
+    # Analyze each category
+    for category in df_freq['category'].unique():
+        category_data = df_freq[df_freq['category'] == category].copy()
+        
+        if len(category_data) < 2:
+            # Not enough data for frequency analysis
+            frequency_analysis.append({
+                'category': category,
+                'transaction_count': len(category_data),
+                'avg_days_between': None,
+                'frequency_pattern': 'Insufficient data',
+                'next_purchase_prediction': 'Not enough data',
+                'icon': CATEGORY_ICONS.get(category, '❓')
+            })
+            continue
+        
+        # Calculate days between transactions
+        category_data = category_data.sort_values('date')
+        dates = category_data['date'].tolist()
+        
+        days_between = []
+        for i in range(1, len(dates)):
+            delta = (dates[i] - dates[i-1]).days
+            days_between.append(delta)
+        
+        if not days_between:
+            avg_days = None
+            frequency_pattern = 'Single transaction'
+            next_prediction = 'Unable to predict'
+        else:
+            avg_days = np.mean(days_between)
+            
+            # Categorize frequency pattern
+            if avg_days < 2:
+                frequency_pattern = 'Daily'
+            elif avg_days < 7:
+                frequency_pattern = f'Every {avg_days:.1f} days'
+            elif avg_days < 14:
+                frequency_pattern = 'Weekly'
+            elif avg_days < 21:
+                frequency_pattern = 'Bi-weekly'
+            elif avg_days < 35:
+                frequency_pattern = 'Monthly'
+            else:
+                frequency_pattern = f'Every {avg_days/30:.1f} months'
+            
+            # Predict next purchase
+            last_transaction_date = dates[-1]
+            predicted_next = last_transaction_date + timedelta(days=avg_days)
+            days_until_next = (predicted_next - datetime.now()).days
+            
+            if days_until_next <= 0:
+                next_prediction = 'Today or overdue'
+            elif days_until_next == 1:
+                next_prediction = 'Tomorrow'
+            elif days_until_next <= 7:
+                next_prediction = f'In {days_until_next} days'
+            else:
+                next_prediction = f'In {days_until_next} days ({predicted_next.strftime("%b %d")})'
+        
+        frequency_analysis.append({
+            'category': category,
+            'transaction_count': len(category_data),
+            'avg_days_between': avg_days,
+            'frequency_pattern': frequency_pattern,
+            'next_purchase_prediction': next_prediction,
+            'icon': CATEGORY_ICONS.get(category, '❓')
+        })
+    
+    # Sort by transaction count (descending)
+    frequency_analysis = sorted(frequency_analysis, key=lambda x: x['transaction_count'], reverse=True)
+    
+    return frequency_analysis
+
+
+def get_ml_insights_summary(df):
+    """
+    Generate a comprehensive ML insights summary combining clustering and frequency analysis
     
     Args:
         df (DataFrame): Categorized transaction data
-        confidence_threshold (float): Confidence below which to flag
         
     Returns:
-        DataFrame: Transactions with low confidence scores
+        dict: Combined ML insights
     """
-    if df is None or df.empty or 'confidence' not in df.columns:
+    if df is None or df.empty:
         return None
     
-    # Filter low confidence transactions
-    low_confidence = df[df['confidence'] < confidence_threshold].copy()
+    insights = {}
     
-    if low_confidence.empty:
-        return None
+    # Clustering analysis
+    clustering_results = perform_clustering_analysis(df, n_clusters=3)
+    if clustering_results:
+        insights['clustering'] = clustering_results
     
-    # Sort by confidence (lowest first)
-    low_confidence = low_confidence.sort_values('confidence')
+    # Frequency analysis
+    frequency_results = analyze_transaction_frequency(df)
+    if frequency_results:
+        insights['frequency'] = frequency_results
     
-    return low_confidence[['date', 'description', 'category', 'confidence', 'amount_abs']]
+    return insights
 
 
-# Rule-based fallback (optional - for when AI categorization fails)
+# ==================== RULE-BASED CATEGORIZATION ====================
+
 def rule_based_categorization(description):
     """
     Simple rule-based categorization as fallback
@@ -333,46 +471,10 @@ def rule_based_categorization(description):
     return "Other"
 
 
-def hybrid_categorize_transaction(description, classifier, use_ai=True):
-    """
-    Hybrid approach: Try AI first, fallback to rules if confidence is low
-    
-    Args:
-        description (str): Transaction description
-        classifier: HuggingFace pipeline
-        use_ai (bool): Whether to use AI or just rules
-        
-    Returns:
-        tuple: (category, confidence, method_used)
-    """
-    if use_ai and classifier is not None:
-        # Try AI categorization
-        category, confidence = categorize_transaction(description, classifier)
-        
-        # If high confidence, use AI result
-        if confidence > 0.6:
-            return category, confidence, "AI"
-    
-    # Otherwise, use rule-based
-    category = rule_based_categorization(description)
-    return category, 0.9, "Rules"  # Assume high confidence for rule-based
-
-
 if __name__ == "__main__":
-    # Test the categorizer
-    print("Categorizer module loaded successfully!")
+    print("Enhanced Categorizer with ML loaded successfully!")
     print(f"Available categories: {CATEGORIES}")
-    print("\nTest categorization:")
-    
-    # Test with sample descriptions
-    test_descriptions = [
-        "STARBUCKS KLCC",
-        "GRAB-RIDE JALAN AMPANG",
-        "SHOPEE PURCHASE",
-        "TNB ELECTRICITY BILL"
-    ]
-    
-    print("\nRule-based categorization test:")
-    for desc in test_descriptions:
-        category = rule_based_categorization(desc)
-        print(f"  {desc} → {category}")
+    print("\nML Methods Available:")
+    print("1. K-Means Clustering Analysis - perform_clustering_analysis(df)")
+    print("2. Transaction Frequency Analysis - analyze_transaction_frequency(df)")
+    print("3. Combined ML Insights - get_ml_insights_summary(df)")
