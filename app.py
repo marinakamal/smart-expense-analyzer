@@ -184,7 +184,7 @@ if df is not None:
             with col3:
                 st.write(f"{row['percentage']:.1f}%")
             with col4:
-                st.write(f"{int(row['count'])} transactions")
+                st.write(f"{int(row['count'])} transactions") 
     
 
     
@@ -214,17 +214,6 @@ if df is not None:
                     color_continuous_scale='RdYlGn_r'
                 )
                 st.plotly_chart(fig_freq, use_container_width=True)
-                
-                # Key insights
-                most_frequent = min(valid_freq, key=lambda x: x['avg_days_between'])
-                least_frequent = max(valid_freq, key=lambda x: x['avg_days_between'])
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.success(f"🏆 **Most Frequent:** {most_frequent['category']} - {most_frequent['frequency_pattern']}")
-                with col2:
-                    st.info(f"💤 **Least Frequent:** {least_frequent['category']} - {least_frequent['frequency_pattern']}")
-
     
     
     # ========== ENHANCED CHATBOT WITH QUICK ACTIONS ==========
