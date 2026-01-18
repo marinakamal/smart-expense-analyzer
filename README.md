@@ -59,7 +59,7 @@ smart-expense-analyzer/
 │   ├── categorizer.py       # Rule-based classification + ML analysis
 │   └── llm_insights.py      # Gemini LLM integration
 ├── data/
-│   └── sample_statement.csv # Sample data for demo
+│   └── sample_statement.pdf # Sample data for demo
 ├── requirements.txt         # Python dependencies
 └── README.md               # This file
 ```
@@ -70,9 +70,7 @@ smart-expense-analyzer/
 2. **Enter Context:** Provide your monthly income and savings amount in sidebar
 3. **View Analysis:** 
    - Category breakdown with charts
-   - ML clustering patterns (automatically generated)
    - Purchase frequency predictions (automatically generated)
-4. **Manual Corrections:** Categorize any uncategorized transactions
 5. **Ask Questions:** Use the chatbot for personalized financial advice
 
 ### Supported Format
@@ -85,20 +83,19 @@ Date, Description, Amount, Balance
 
 - **Frontend:** Streamlit
 - **LLM:** Google Gemini API
-- **Machine Learning:** scikit-learn (K-Means Clustering, Time Series Analysis)
+- **Machine Learning:** scikit-learn (Time Series Analysis)
 - **Data Processing:** pandas, numpy
 - **Visualization:** Plotly
 
 ## 📊 Demo
 
-Try with the included `sample_bank_statement.csv` (50 sample transactions)
+Try with the included `sample_statement.pdf` (30 sample transactions)
 
 ## 🎓 CAIE Project
 
 This project is part of the Certified AI Engineer (CAIE) program by USAII, demonstrating:
 - **LLM Functionality:** Google Gemini chatbot for financial advice
 - **ML Components:** 
-  - K-Means clustering for spending pattern analysis
   - Time series analysis for purchase frequency prediction
 - **Real-world Use Case:** Personal finance management
 - **Working Interface:** Streamlit web application
