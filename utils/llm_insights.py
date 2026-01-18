@@ -91,7 +91,22 @@ def chat_with_gemini(user_message, conversation_history, context):
         
     Returns:
         str: Gemini's response
+
+
+    LLM Integration with Context-Aware Prompting
+
+    Approach: Prompt-based (not RAG or fine-tuning) because:
+    1. Financial data is small and structured (fits in context window)
+    2. User data changes with each upload (no persistent storage)
+    3. Session-specific context more appropriate than document retrieval
+
+    Prompt Strategy:
+    - Inject comprehensive financial context (income, spending breakdown)
+    - Maintain conversation history (last 6 messages)
+    - Provide specific instructions for actionable advice
+    - Cache context for 1 hour to optimize API usage
     """
+
     if not configure_gemini():
         return "Unable to respond: API key not configured"
     

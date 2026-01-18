@@ -18,7 +18,6 @@ from utils.categorizer import (
     get_category_breakdown, 
     CATEGORY_ICONS,
     CATEGORIES,
-    perform_clustering_analysis,
     analyze_transaction_frequency
 )
 from utils.llm_insights import (
@@ -187,47 +186,7 @@ if df is not None:
             with col4:
                 st.write(f"{int(row['count'])} transactions")
     
-    
-    # ========== ML CLUSTERING ANALYSIS (AUTO-RUN) ==========
-    st.markdown("---")
-    st.subheader("Spending Pattern Analysis")
-    st.markdown("Grouping your transactions into natural spending patterns")
-    
-    with st.spinner("🤖 Running K-Means clustering algorithm..."):
-        clustering_results = perform_clustering_analysis(df, n_clusters=3)
-        
-        if clustering_results:
-            cluster_analysis = clustering_results['cluster_analysis']
-            df_with_clusters = clustering_results['df_with_clusters']
-            
-            # Visualization: Scatter plot of clusters
-            fig_scatter = px.scatter(
-                df_with_clusters,
-                x=df_with_clusters.index,
-                y='amount_abs',
-                color='cluster',
-                title='Transaction Clusters (by Amount)',
-                labels={'x': 'Transaction Index', 'amount_abs': 'Amount (RM)', 'cluster': 'Cluster'},
-                color_continuous_scale=['green', 'yellow', 'red']
-            )
-            st.plotly_chart(fig_scatter, use_container_width=True)
-            
-            # Summary cards for clusters
-            col1, col2, col3 = st.columns(3)
-            
-            for idx, cluster in enumerate(cluster_analysis):
-                profile = cluster['profile']
-                
-                with [col1, col2, col3][idx]:
-                    st.markdown(f"### {profile['icon']} {profile['name']}")
-                    st.metric("Transactions", f"{cluster['transaction_count']}")
-                    st.metric("Avg Amount", f"RM {cluster['avg_amount']:.2f}")
-                    st.caption(f"{cluster['percentage_of_transactions']:.1f}% of total spending")
-            
-            # Key insight
-            dominant_cluster = max(cluster_analysis, key=lambda x: x['percentage_of_transactions'])
-            st.info(f"💡 **Key Insight:** {dominant_cluster['percentage_of_transactions']:.0f}% of your transactions fall into the '{dominant_cluster['profile']['name']}' pattern (average RM {dominant_cluster['avg_amount']:.2f} per transaction)")
-    
+
     
     # ========== ML TRANSACTION FREQUENCY ANALYSIS (AUTO-RUN) ==========
     st.markdown("---")
@@ -265,83 +224,7 @@ if df is not None:
                     st.success(f"🏆 **Most Frequent:** {most_frequent['category']} - {most_frequent['frequency_pattern']}")
                 with col2:
                     st.info(f"💤 **Least Frequent:** {least_frequent['category']} - {least_frequent['frequency_pattern']}")
-    
-    
-    # ========== MANUAL CATEGORIZATION FOR UNCATEGORIZED TRANSACTIONS ==========
-    st.markdown("---")
-    st.subheader("✏️ Manual Transaction Categorization")
-    
-    # Filter transactions categorized as "Other"
-    uncategorized = df[df['category'] == 'Other']
-    
-    if len(uncategorized) > 0:
-        st.warning(f"⚠️ You have {len(uncategorized)} uncategorized transactions. Help improve accuracy by categorizing them manually!")
-        
-        with st.expander(f"📝 Categorize {len(uncategorized)} Transactions", expanded=False):
-            st.markdown("Review and categorize transactions that couldn't be automatically classified:")
-            
-            # Initialize session state for manual categories if not exists
-            if 'manual_categories' not in st.session_state:
-                st.session_state.manual_categories = {}
-            
-            # Display each uncategorized transaction
-            for idx, row in uncategorized.iterrows():
-                col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
-                
-                with col1:
-                    st.text(row['description'])
-                
-                with col2:
-                    st.text(f"RM {row['amount_abs']:.2f}")
-                
-                with col3:
-                    # Dropdown for category selection
-                    current_category = st.session_state.manual_categories.get(idx, "Other")
-                    
-                    new_category = st.selectbox(
-                        "Category",
-                        options=["Other"] + [cat for cat in CATEGORIES if cat != "Other"],
-                        index=0 if current_category == "Other" else [cat for cat in CATEGORIES if cat != "Other"].index(current_category) + 1,
-                        key=f"cat_select_{idx}",
-                        label_visibility="collapsed"
-                    )
-                    
-                    # Store the selection
-                    if new_category != "Other":
-                        st.session_state.manual_categories[idx] = new_category
-                
-                with col4:
-                    # Apply button
-                    if st.button("✅", key=f"apply_{idx}", help="Apply category"):
-                        if idx in st.session_state.manual_categories:
-                            df.at[idx, 'category'] = st.session_state.manual_categories[idx]
-                            st.success("✓")
-            
-            st.markdown("---")
-            
-            # Bulk apply button
-            if len(st.session_state.manual_categories) > 0:
-                col1, col2 = st.columns([3, 1])
-                
-                with col1:
-                    st.info(f"💡 {len(st.session_state.manual_categories)} transactions ready to be recategorized")
-                
-                with col2:
-                    if st.button("✅ Apply All Changes", key="apply_all_btn"):
-                        # Apply all manual categorizations
-                        for idx, category in st.session_state.manual_categories.items():
-                            if idx in df.index:
-                                df.at[idx, 'category'] = category
-                        
-                        st.success(f"✅ Successfully recategorized {len(st.session_state.manual_categories)} transactions!")
-                        
-                        # Clear manual categories
-                        st.session_state.manual_categories = {}
-                        
-                        # Force refresh
-                        st.rerun()
-    else:
-        st.success("✅ All transactions are categorized! No manual intervention needed.")
+
     
     
     # ========== ENHANCED CHATBOT WITH QUICK ACTIONS ==========
@@ -447,13 +330,12 @@ else:
         
         ### Features
         - 🤖 **Rule-Based Categorization**: Automatic expense classification
-        - 🤖 **Clustering Analysis**: K-Means algorithm groups spending patterns
         - ⏱️ **Frequency Prediction**: Predicts next purchase dates per category
         - 📊 **Visual Analytics**: Interactive charts and spending breakdown
         - 💬 **LLM Financial Chatbot**: Conversational advise using Google Gemini
         
         ### Technologies Used
-        - **Machine Learning**: scikit-learn (K-Means Clustering, Time Series Analysis)
+        - **Machine Learning**: Rule-based classification, scikit-learn (Time Series Analysis)
         - **LLM**: Google Gemini API
         - **Visualization**: Plotly, Streamlit
         
@@ -467,7 +349,7 @@ else:
     st.markdown("---")
     st.subheader("🎯 What You Can Do")
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
@@ -479,22 +361,8 @@ else:
     
     with col2:
         st.markdown("""
-        **🤖 ML Analysis**
-        - K-Means clustering
-        - Purchase frequency analysis
-        """)
-    
-    with col3:
-        st.markdown("""
-        **💰 Save More**
-        - Budget planning
-        - Savings goals
-        """)
-    
-    with col4:
-        st.markdown("""
         **💬 AI Chat**
-        - Ask questions
+        - Ask questions about budget planning or savings goals
         - Get advice
         - Financial tips
         """)
