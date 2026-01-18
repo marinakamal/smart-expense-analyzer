@@ -5,10 +5,8 @@ Financial analysis tool that categorizes bank transactions and provides spending
 ## 🎯 Features
 
 - 📋 **Rule-Based Categorization** - Automatic expense classification using keyword matching
-- 🤖 **ML Clustering Analysis** - K-Means algorithm groups spending patterns
 - ⏱️ **ML Frequency Analysis** - Analyzes purchase frequency per category
 - 💬 **LLM Financial Chatbot** - Conversational advice using Google Gemini API
-- ✏️ **Manual Categorization** - Correct uncategorized transactions manually
 - 📊 **Visual Dashboard** - Interactive charts and spending breakdown
 
 ## 🚀 Quick Start
